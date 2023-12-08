@@ -197,7 +197,7 @@ def generate_folium_map(
     )
 
     # display the field parcel boundaries
-    field_calendar = field_calendar.to_crs(epsg=4326)
+    field_calendar = field_calendar.to_crs(epsg=3857)
     # add to map (exclude timestamp column)
     field_calendar = field_calendar.drop(columns=['harvest_date'])
     folium.GeoJson(
@@ -237,13 +237,13 @@ def generate_folium_map(
         # reproject to WGS84
         geo_info = GeoInfo(**geo_info_dict)
         band = Band(values=img, geo_info=geo_info, band_name='Biomass', nodata=np.nan)
-        img_repr = band.reproject(target_crs=4326, nodata_src=np.nan, nodata_dst=np.nan).values
+        img_repr = band.reproject(target_crs=3857, nodata_src=np.nan, nodata_dst=np.nan).values
         img_repr[img_repr == 1.0483531] = np.nan
-        img = np.clip((img - 0) / (14), 0, 1)
+        img_repr = np.clip((img_repr - 0) / (14), 0, 1)
 
         show = idx == 0
         bm = ImageOverlay(
-            image=img,
+            image=img_repr,
             name=f'{date}',
             opacity=1,
             bounds=[[lry, ulx], [uly, lrx]],
@@ -251,7 +251,7 @@ def generate_folium_map(
             cross_origin=False,
             zindex=1,
             colormap=cm.viridis,
-            mercator_project=True,
+            mercator_project=False,
             show=show
         )
 

@@ -17,7 +17,7 @@ from branca.element import Element, MacroElement, Template
 from eodal.core.band import Band, GeoInfo
 from folium.raster_layers import ImageOverlay
 from pathlib import Path
-from pyproj import CRS, Transformer
+from rasterio.coords import BoundingBox
 
 
 class BindColormap(MacroElement):
@@ -164,21 +164,6 @@ def generate_folium_map(
     with open(fpath_geoinfo_yaml, 'r') as src:
         geo_info_dict = yaml.safe_load(src)
 
-    # get bounds in WGS84
-    ulx, uly = geo_info_dict['ulx'], geo_info_dict['uly']
-    epsg = geo_info_dict['epsg']
-    pixres_x, pixres_y = geo_info_dict['pixres_x'], geo_info_dict['pixres_y']
-    nrows = growth_model_arr.shape[1]
-    ncols = growth_model_arr.shape[2]
-    lrx = ulx + ncols * pixres_x
-    lry = uly + nrows * pixres_y
-    # reproject to web mercator
-    src_crs = CRS.from_epsg(epsg)
-    dst_crs = CRS.from_epsg(4326)
-    transformer = Transformer.from_crs(src_crs, dst_crs)
-    uly, ulx = transformer.transform(xx=ulx, yy=uly)
-    lry, lrx = transformer.transform(xx=lrx, yy=lry)
-
     # get the timestamps
     fpath_timestamps = data_dir.joinpath('2021/2021_lai.csv')
     timestamps = pd.read_csv(fpath_timestamps)
@@ -237,16 +222,23 @@ def generate_folium_map(
         # reproject to WGS84
         geo_info = GeoInfo(**geo_info_dict)
         band = Band(values=img, geo_info=geo_info, band_name='Biomass', nodata=np.nan)
-        img_repr = band.reproject(target_crs=3857, nodata_src=np.nan, nodata_dst=np.nan).values
+        img_repr = band.reproject(target_crs=4326, nodata_src=np.nan, nodata_dst=np.nan)
+        bounds = BoundingBox(*img_repr.bounds.exterior.bounds)
+        img_repr = img_repr.values
+        # no-data handling. TODO: this should be fixed in EOdal
         img_repr[img_repr == 1.0483531] = np.nan
-        img_repr = np.clip((img_repr - 0) / (14), 0, 1)
+        img_repr[img_repr == 1.0321578] = np.nan
+        img_repr[img_repr == 1.0402092] = np.nan
+        img_repr[img_repr == 1.0521408] = np.nan
+        img_repr[img_repr == 1.0451645] = np.nan
+        img_repr = np.clip((img_repr - 1) / (12 - 1), 0, 1)
 
         show = idx == 0
         bm = ImageOverlay(
             image=img_repr,
             name=f'{date}',
             opacity=1,
-            bounds=[[lry, ulx], [uly, lrx]],
+            bounds=[[bounds.bottom, bounds.left], [bounds.top, bounds.right]],
             interactive=False,
             cross_origin=False,
             zindex=1,
@@ -257,13 +249,12 @@ def generate_folium_map(
 
         m.add_child(bm)
         idx += 1
-        break
 
     # add colorbar
     colormap = bcm.LinearColormap(
         colors=[cm.viridis(x) for x in np.linspace(0, 1, num=256)],
-        vmin=0,
-        vmax=15,
+        vmin=1,
+        vmax=13,
         caption='Biomasse (t/ha)'
     )
     colormap.add_to(m)

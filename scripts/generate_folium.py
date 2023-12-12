@@ -78,10 +78,13 @@ def get_textbox_css():
 
     <body>
         <div id="textbox" class="textbox">
-        <div class="textbox-title">Winterweizen Biomasse</div>
+        <div class="textbox-title">Getreide Biomasse</div>
         <div class="textbox-content">
             <pre>
-            Die Karte zeigt unser Biomasse-Modell für ausgesuchte Getreide-Felder während fünf Terminen kurz vor dem Ährenschieben im Jahr 2021. Die zeitliche Auflösung des Modells ist 5 Tage, die räumliche Auflösung beträgt 10 Meter.
+            Die Karte zeigt unser Biomasse-Modell für ausgesuchte 
+            Getreide-Felder während fünf Terminen kurz vor dem 
+            Ährenschieben im Jahr 2021. Die zeitliche Auflösung 
+            des Modells ist 5 Tage, die räumliche Auflösung beträgt 10 Meter.
             </pre>
         </div>
         </div>

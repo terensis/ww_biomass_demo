@@ -81,12 +81,7 @@ def get_textbox_css():
         <div class="textbox-title">Winterweizen Biomasse</div>
         <div class="textbox-content">
             <pre>
-            Lorem ipsum dolor sit amet, consectetur adipiscing elit,
-            sed do eiusmod tempor incididunt ut labore et dolore magna
-            aliqua. Ut enim ad minim veniam, quis nostrud exercitation
-            ullamco laboris nisi ut aliquip ex ea commodo consequat.
-            Duis aute irure dolor in reprehenderit in voluptate velit esse
-            cillum dolore eu fugiat nulla pariatur.
+            Die Karte zeigt unser Biomasse-Modell für ausgesuchte Getreide-Felder während fünf Terminen kurz vor dem Ährenschieben im Jahr 2021. Die zeitliche Auflösung des Modells ist 5 Tage, die räumliche Auflösung beträgt 10 Meter.
             </pre>
         </div>
         </div>
@@ -176,7 +171,7 @@ def generate_folium_map(
     # create map
     m = folium.Map(
         location=[46.98, 7.07],
-        zoom_start=14,
+        zoom_start=15,
         tiles='cartodbpositron',
         attr='© Terensis (2023). Basemap data © CartoDB'
     )

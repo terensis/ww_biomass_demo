@@ -28,11 +28,13 @@ class BindColormap(MacroElement):
     colormap : branca.colormap.ColorMap
         The colormap to bind.
     """
+
     def __init__(self, layer, colormap):
         super(BindColormap, self).__init__()
         self.layer = layer
         self.colormap = colormap
-        self._template = Template(u"""
+        self._template = Template(
+            """
         {% macro script(this, kwargs) %}
             {{this.colormap.get_name()}}.svg[0][0].style.display = 'block';
             {{this._parent.get_name()}}.on('overlayadd', function (eventLayer) {
@@ -44,7 +46,8 @@ class BindColormap(MacroElement):
                     {{this.colormap.get_name()}}.svg[0][0].style.display = 'none';
                 }});
         {% endmacro %}
-        """)  # noqa
+        """
+        )  # noqa
 
 
 def get_textbox_css():
@@ -138,7 +141,7 @@ def get_textbox_css():
 def generate_folium_map(
     data_dir: Path,
     output_dir: Path,
-    output_name: str = 'index.html',
+    output_name: str = "index.html",
 ) -> None:
     """
     Generate a folium map of the data in the data directory to
@@ -150,23 +153,24 @@ def generate_folium_map(
     """
     # prepare the GLAI data
     field_calendar = gpd.read_file(
-        data_dir.joinpath('2021/2021_Winterweizen-Triticale.gpkg'))
+        data_dir.joinpath("2021/2021_Winterweizen-Triticale.gpkg")
+    )
 
-    fpath_growth_model_res = data_dir.joinpath('2021/2021_lai.npz')
+    fpath_growth_model_res = data_dir.joinpath("2021/2021_lai.npz")
 
     with np.load(fpath_growth_model_res) as src:
-        growth_model_arr = src['interpolated_trait']
+        growth_model_arr = src["interpolated_trait"]
 
     # load the GeoInfo yaml
-    fpath_geoinfo_yaml = data_dir.joinpath('2021/2021_lai.yaml')
-    with open(fpath_geoinfo_yaml, 'r') as src:
+    fpath_geoinfo_yaml = data_dir.joinpath("2021/2021_lai.yaml")
+    with open(fpath_geoinfo_yaml, "r") as src:
         geo_info_dict = yaml.safe_load(src)
 
     # get the timestamps
-    fpath_timestamps = data_dir.joinpath('2021/2021_lai.csv')
+    fpath_timestamps = data_dir.joinpath("2021/2021_lai.csv")
     timestamps = pd.read_csv(fpath_timestamps)
-    timestamps.columns = ['date']
-    timestamps['date'] = pd.to_datetime(timestamps['date'])
+    timestamps.columns = ["date"]
+    timestamps["date"] = pd.to_datetime(timestamps["date"])
 
     # select three dates during the season
     selected_indices = [30, 35, 40, 45, 50]
@@ -175,28 +179,27 @@ def generate_folium_map(
     m = folium.Map(
         location=[46.98, 7.07],
         zoom_start=15,
-        tiles='cartodbpositron',
-        attr='© Terensis (2023). Basemap data © CartoDB'
+        tiles="cartodbpositron",
+        attr="© Terensis (2023). Basemap data © CartoDB",
     )
 
     # display the field parcel boundaries
     field_calendar = field_calendar.to_crs(epsg=3857)
     # add to map (exclude timestamp column)
-    field_calendar = field_calendar.drop(columns=['harvest_date'])
+    field_calendar = field_calendar.drop(columns=["harvest_date"])
     folium.GeoJson(
         field_calendar,
-
-        name='Feldgrenzen',
+        name="Feldgrenzen",
         style_function=lambda x: {
-            'color': 'black',
-            'weight': 2,
-            'fillOpacity': 0,
+            "color": "black",
+            "weight": 2,
+            "fillOpacity": 0,
         },
         tooltip=folium.features.GeoJsonTooltip(
-            fields=['crop_type'],
-            aliases=['Kultur'],
+            fields=["crop_type"],
+            aliases=["Kultur"],
             localize=True,
-        )
+        ),
     ).add_to(m)
 
     # Add custom Terensis style
@@ -205,13 +208,12 @@ def generate_folium_map(
     my_custom_style._template = Template(textbox_css)
     # Adding to the map
     m.get_root().add_child(my_custom_style)
-    
+
     # add data
     idx = 0
     for selected_index in selected_indices:
-
         # get the date
-        date = timestamps['date'].iloc[selected_index].date()
+        date = timestamps["date"].iloc[selected_index].date()
 
         # plot the raster values using ImageOverlay
         img = growth_model_arr[selected_index, :, :]
@@ -219,7 +221,7 @@ def generate_folium_map(
         img = 2.31 * np.exp(0.25 * img) - 1.61
         # reproject to WGS84
         geo_info = GeoInfo(**geo_info_dict)
-        band = Band(values=img, geo_info=geo_info, band_name='Biomass', nodata=np.nan)
+        band = Band(values=img, geo_info=geo_info, band_name="Biomass", nodata=np.nan)
         img_repr = band.reproject(target_crs=4326, nodata_src=np.nan, nodata_dst=np.nan)
         bounds = BoundingBox(*img_repr.bounds.exterior.bounds)
         img_repr = img_repr.values
@@ -234,7 +236,7 @@ def generate_folium_map(
         show = idx == 0
         bm = ImageOverlay(
             image=img_repr,
-            name=f'{date}',
+            name=f"{date}",
             opacity=1,
             bounds=[[bounds.bottom, bounds.left], [bounds.top, bounds.right]],
             interactive=False,
@@ -242,7 +244,7 @@ def generate_folium_map(
             zindex=1,
             colormap=cm.viridis,
             mercator_project=False,
-            show=show
+            show=show,
         )
 
         m.add_child(bm)
@@ -253,7 +255,7 @@ def generate_folium_map(
         colors=[cm.viridis(x) for x in np.linspace(0, 1, num=256)],
         vmin=1,
         vmax=13,
-        caption='Biomasse (t/ha)'
+        caption="Biomasse (t/ha)",
     )
     colormap.add_to(m)
 
@@ -262,8 +264,8 @@ def generate_folium_map(
     m.save(output_dir.joinpath(output_name))
 
 
-if __name__ == '__main__':
-    data_dir = Path('data')
-    output_dir = Path('.')
+if __name__ == "__main__":
+    data_dir = Path("data")
+    output_dir = Path(".")
     output_dir.mkdir(exist_ok=True)
     generate_folium_map(data_dir, output_dir)

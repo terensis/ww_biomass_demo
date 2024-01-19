@@ -84,8 +84,8 @@ def get_textbox_css():
         <div class="textbox-title">Getreide Biomasse und Ernteertrag</div>
         <div class="textbox-content">
             <pre>
-            Die Karte zeigt unser Biomasse-Modell für ausgesuchte 
-            Getreide-Felder während fünf Terminen kurz vor dem 
+            Die Karte zeigt unser Biomasse-Modell für ausgesuchte
+            Getreide-Felder während fünf Terminen kurz vor dem
             Ährenschieben im Jahr 2021. Zudem ist der vom Modell geschätzte
             Ernteertrag dargestellt.
             Die zeitliche Auflösung des Modells ist 5 Tage, die räumliche

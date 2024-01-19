@@ -81,13 +81,15 @@ def get_textbox_css():
 
     <body>
         <div id="textbox" class="textbox">
-        <div class="textbox-title">Getreide Biomasse</div>
+        <div class="textbox-title">Getreide Biomasse und Ernteertrag</div>
         <div class="textbox-content">
             <pre>
             Die Karte zeigt unser Biomasse-Modell für ausgesuchte 
             Getreide-Felder während fünf Terminen kurz vor dem 
-            Ährenschieben im Jahr 2021. Die zeitliche Auflösung 
-            des Modells ist 5 Tage, die räumliche Auflösung beträgt 10 Meter.
+            Ährenschieben im Jahr 2021. Zudem ist der vom Modell geschätzte
+            Ernteertrag dargestellt.
+            Die zeitliche Auflösung des Modells ist 5 Tage, die räumliche
+            Auflösung beträgt 10 Meter.
             </pre>
         </div>
         </div>
@@ -142,6 +144,8 @@ def generate_folium_map(
     data_dir: Path,
     output_dir: Path,
     output_name: str = "index.html",
+    vmin: float = 1.0,
+    vmax: float = 13.0,
 ) -> None:
     """
     Generate a folium map of the data in the data directory to
@@ -150,6 +154,8 @@ def generate_folium_map(
     :param data_dir: directory with the data (geojson files).
     :param output_dir: directory for writing outputs to.
     :param output_name: name of the output file.
+    :param vmin: minimum value for the colormap (t/ha).
+    :param vmax: maximum value for the colormap (t/ha).
     """
     # prepare the GLAI data
     field_calendar = gpd.read_file(
@@ -181,6 +187,21 @@ def generate_folium_map(
         zoom_start=15,
         tiles="cartodbpositron",
         attr="© Terensis (2023). Basemap data © CartoDB",
+    )
+
+    # get the grain yield raster
+    fpath_yield_map = data_dir.joinpath("2021/grain_yield_2021.tif")
+    grain_yield = Band.from_rasterio(
+        fpath_yield_map, band_idx=1)
+    # get the mean grain yield per parcel
+    grain_yield_stats = pd.DataFrame(grain_yield.reduce(by=field_calendar))
+    field_calendar.loc[:, "grain_yield"] = \
+        grain_yield_stats["mean"].values * 0.01
+    field_calendar.loc[:, "grain_yield"] = \
+        field_calendar["grain_yield"].round(2)
+    field_calendar.loc[:, "crop_type"] = field_calendar.apply(
+        lambda x: x.crop_type + f' (Mittlerer Ertrag: {x.grain_yield} t/ha)',
+        axis=1
     )
 
     # display the field parcel boundaries
@@ -231,7 +252,7 @@ def generate_folium_map(
         img_repr[img_repr == 1.0402092] = np.nan
         img_repr[img_repr == 1.0521408] = np.nan
         img_repr[img_repr == 1.0451645] = np.nan
-        img_repr = np.clip((img_repr - 1) / (12 - 1), 0, 1)
+        img_repr = np.clip((img_repr - vmin) / (vmax - vmin), 0, 1)
 
         show = idx == 0
         bm = ImageOverlay(
@@ -239,7 +260,7 @@ def generate_folium_map(
             name=f"{date}",
             opacity=1,
             bounds=[[bounds.bottom, bounds.left], [bounds.top, bounds.right]],
-            interactive=False,
+            interactive=True,
             cross_origin=False,
             zindex=1,
             colormap=cm.viridis,
@@ -250,11 +271,37 @@ def generate_folium_map(
         m.add_child(bm)
         idx += 1
 
+    # add grain yield map
+    # reprojection to WGS84
+    img_repr = grain_yield.reproject(
+        target_crs=4326,
+        nodata_src=grain_yield.nodata,
+        nodata_dst=grain_yield.nodata)
+    bounds = BoundingBox(*img_repr.bounds.exterior.bounds)
+    img_repr = img_repr.values
+    img_repr[img_repr == grain_yield.nodata] = np.nan
+    img_repr *= 0.01  # convert to t/ha (from g/m2)
+    # stretch to [0, 1]
+    img_repr = np.clip((img_repr - vmin) / (vmax - vmin), 0, 1)
+    bm = ImageOverlay(
+        image=img_repr,
+        name="Grain Yield",
+        opacity=1,
+        bounds=[[bounds.bottom, bounds.left], [bounds.top, bounds.right]],
+        interactive=False,
+        cross_origin=False,
+        zindex=1,
+        colormap=cm.viridis,
+        mercator_project=False,
+        show=False,
+    )
+    m.add_child(bm)
+
     # add colorbar
     colormap = bcm.LinearColormap(
         colors=[cm.viridis(x) for x in np.linspace(0, 1, num=256)],
-        vmin=1,
-        vmax=13,
+        vmin=vmin,
+        vmax=vmax,
         caption="Biomasse (t/ha)",
     )
     colormap.add_to(m)
